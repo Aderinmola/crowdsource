@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # Custom Apps
     'user',
     'article',
+    'rating',
 
     # Third Party Apps
     'rest_framework',
