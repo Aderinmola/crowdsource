@@ -55,3 +55,6 @@ class ArticleRatingUpdateAPIView(generics.UpdateAPIView):
             defaults={'score': score}
         )
         return Response({'message': 'Rating registered'}, status=status.HTTP_200_OK)
+
+
+

@@ -5,6 +5,7 @@ from django.db.models import Avg
 
 from .models import Article
 from .models import Comment
+from user.models import User
 
 
 class ArticleSerializer(serializers.ModelSerializer):
@@ -29,11 +30,20 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'author', 'created_at', 'updated_at']
 
 
+class AuthorProfileSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(source='users_profile.profile_picture')
+
+    class Meta:
+        model = User
+        fields = ['username', 'profile_picture']
+
+
 class ArticleDetailSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)  # reverse relation
     upvotes = serializers.SerializerMethodField()
     downvotes = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
+    author = AuthorProfileSerializer(read_only=True)
 
     class Meta:
         model = Article

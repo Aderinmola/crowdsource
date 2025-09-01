@@ -38,17 +38,21 @@ class Profile(models.Model):
         editable=False
     )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='users_profile')
-    image = models.ImageField(upload_to="user_folder", default="default-user.jpg", null=True, blank=True)
     full_name = models.CharField(max_length=100)
     country = models.CharField(max_length=100, null=True, blank=True)
     about = models.TextField(null=True, blank=True)
+    bio = models.TextField(blank=True)
+    profile_picture = models.ImageField(upload_to="profiles/", default="default-user.jpg", blank=True, null=True)
+    location = models.CharField(max_length=100, blank=True)
+    website = models.URLField(blank=True)
+    following = models.ManyToManyField('self', symmetrical=False, related_name='followers', blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         if self.full_name:
-            return str(self.full_name)
+            return f"{str(self.full_name)}'s profile"
         else:
-            return str(self.user.full_name)
+            return f"{str(self.user.username)}'s profile"
         
     def save(self, *args, **kwargs):
         if self.full_name == "" or self.full_name == None:

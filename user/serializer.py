@@ -52,7 +52,14 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+# class ProfileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Profile
+#         fields = "__all__"
 class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+
     class Meta:
         model = Profile
-        fields = "__all__"
+        fields = ['username', 'email', 'bio', 'profile_picture', 'location', 'website']
