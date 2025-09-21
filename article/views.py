@@ -7,6 +7,8 @@ from .serializer import ArticleSerializer, ArticleDetailSerializer, CommentSeria
 
 from .permissions import IsCommentOwner
 
+from notification.utils import create_notification 
+
 
 class ArticleViewSet(viewsets.ModelViewSet):
     queryset = Article.objects.all()
@@ -15,7 +17,16 @@ class ArticleViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated()]  # Require login for modifying actions
-        return [permissions.AllowAny()] 
+        return [permissions.AllowAny()]
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': 'Articles retrieved successfully',
+            'data': serializer.data
+        })
 
     def retrieve(self, request, *args, **kwargs):
         article = self.get_object()
@@ -32,7 +43,23 @@ class ArticleCommentListCreateAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         article = Article.objects.get(pk=self.kwargs['article_id'])
-        serializer.save(author=self.request.user, article=article)
+        comment_author = self.request.user
+        serializer.save(author=comment_author, article=article)
+
+        # Notify article author if the commenter is not the author themselves
+        if article.author != comment_author:
+            verb="commented on your article"
+            create_notification(
+                recipient=article.author,
+                actor=comment_author,
+                verb=verb,
+                target=article
+            )
+
+        return Response({
+            'message': 'Comment added!!!',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
 
 
 class CommentUpdateDeleteAPIView(generics.GenericAPIView):
