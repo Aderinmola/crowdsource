@@ -3,7 +3,9 @@ from django.shortcuts import render
 from user import serializer as api_serializer
 from user.models import User, Profile
 
-from rest_framework import generics, status
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -108,6 +110,31 @@ class FollowersListView(APIView):
 
 class FollowingListView(APIView):
     permission_classes = [IsAuthenticated]
+
+    # Enable search, filter, and ordering
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+
+    # Fields you can filter by
+    filterset_fields = {
+        'created_at': ['exact', 'gte', 'lte'],  # Filter by date or date range
+        # 'status': ['exact'],
+        # 'tags__name': ['exact'],
+    }
+
+    # Fields you can search by (keyword)
+    search_fields = ['title', 'content', 'author__username']
+
+    # Fields you can sort by
+    ordering_fields = [
+        'created_at', 
+        # 'votes'
+        ]
+    ordering = ['-created_at']  # Default sort: newest first
+
 
     def get(self, request):
         following = request.user.users_profile.following.all()
