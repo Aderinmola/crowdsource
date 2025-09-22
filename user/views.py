@@ -3,11 +3,15 @@ from django.shortcuts import render
 from user import serializer as api_serializer
 from user.models import User, Profile
 
-from rest_framework import generics, status
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from notification.utils import create_notification
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -42,16 +46,32 @@ class MyProfileUpdateView(generics.UpdateAPIView):
     def get_object(self):
         return self.request.user.users_profile
 
+
 class FollowUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, id):
         target_user = User.objects.filter(id=id).first()
         if not target_user or target_user == request.user:
-            return Response({'detail': 'Invalid operation, you cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Invalid operation, you cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
 
         request.user.users_profile.following.add(target_user.users_profile)
-        return Response({'detail': f'Followed {target_user.username}'}, status=200)
+
+        # Notify
+        print("USER==>", target_user.users_profile)
+        if request.user != target_user:
+            verb = 'Followed by another user'
+            create_notification(
+                recipient=target_user,
+                actor=request.user,
+                verb=verb,
+                target=target_user
+            )
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': f'Followed {target_user.username}',
+            # 'data': serializer.data
+        })
 
 class UnfollowUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -59,10 +79,26 @@ class UnfollowUserView(APIView):
     def post(self, request, id):
         target_user = User.objects.filter(id=id).first()
         if not target_user or target_user == request.user:
-            return Response({'detail': 'Invalid operation.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Invalid operation.'}, status=status.HTTP_400_BAD_REQUEST)
 
         request.user.users_profile.following.remove(target_user.users_profile)
-        return Response({'detail': f'Unfollowed {target_user.username}'}, status=200)
+
+        # Notify
+        print("USER==>", target_user.users_profile)
+        if request.user != target_user:
+            verb = 'Unfollowed by another user'
+            create_notification(
+                recipient=target_user,
+                actor=request.user,
+                verb=verb,
+                target=target_user
+            )
+    
+        return Response({
+            'status': status.HTTP_200_OK,
+            'message': f'Unfollowed {target_user.username}',
+            # 'data': serializer.data
+        })
 
 class FollowersListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -74,6 +110,31 @@ class FollowersListView(APIView):
 
 class FollowingListView(APIView):
     permission_classes = [IsAuthenticated]
+
+    # Enable search, filter, and ordering
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+
+    # Fields you can filter by
+    filterset_fields = {
+        'created_at': ['exact', 'gte', 'lte'],  # Filter by date or date range
+        # 'status': ['exact'],
+        # 'tags__name': ['exact'],
+    }
+
+    # Fields you can search by (keyword)
+    search_fields = ['title', 'content', 'author__username']
+
+    # Fields you can sort by
+    ordering_fields = [
+        'created_at', 
+        # 'votes'
+        ]
+    ordering = ['-created_at']  # Default sort: newest first
+
 
     def get(self, request):
         following = request.user.users_profile.following.all()
